@@ -29,6 +29,17 @@
 */
 
 #include <avr/io.h>
+#include <avr/wdt.h>
+#include <avr/power.h>
+#include <avr/interrupt.h>
+#include <stdbool.h>
+#include <string.h>
+
+#include "Descriptors.h"
+
+#include <LUFA/Drivers/Board/Buttons.h>
+#include <LUFA/Drivers/USB/USB.h>
+#include <LUFA/Platform/Platform.h>
 #include "MIDI.h"
 
 static USB_ClassInfo_MIDI_Device_t Keyboard_MIDI_Interface = {
@@ -70,7 +81,7 @@ static uint8_t Channel = MIDI_CHANNEL(1);
    PD0 and PD1 are free.
    PIND, PINB are the (half)tone selectors, 12 of them, pins 2,3,4,5,6,7,8,9,10,11,12,13. */
 static void Keyboard_Scan(void) {
-	for(uint8_t c = 0; c < COLS; ++c) {
+	for(uint8_t c = 0; c < 1; ++c) {
 		if(columnPins[c] == _BV(0)) /* no idea why I'm not allowed to do that. USB device vanishes when it try. */
 			continue;
 		uint16_t prevstate, newstate;
@@ -78,21 +89,23 @@ static void Keyboard_Scan(void) {
 		/* breaks; am not allowed to do that! */
 		PORTC &=~ columnPins[c]; /* pulse column */ /* FIXME */
 		prevstate = keystate[c];
-		newstate = (PIND | (PINB << 8)) >> 2;
+		newstate = ((uint16_t) PIND | ((uint16_t) PINB << 8)) >> 2;
 		if(prevstate != newstate) { /* send MIDI event */
 			uint8_t note;
 			uint16_t changes = newstate ^ prevstate;
-			for(note = 0; note < 12; ++note) {
-				if((changes & _BV(note)) != 0)
+			for(note = 1; note < 12; ++note) { /* FIXME */
+				if((changes & (1 << note)) != 0) {
 					sendMIDIPacket(Channel, (newstate & _BV(note)) == 0 ? MIDI_COMMAND_NOTE_ON : MIDI_COMMAND_NOTE_OFF, 36 + c * 12 + note);
+				}
 			}
+			keystate[c] = newstate;
 		}
-		keystate[c] = newstate;
 		/* TODO debounce? */
 		PORTC |= columnPins[c]; /* end pulse */
 		DDRC &=~ columnPins[c]; /* end pulse */ /* breaks it */
 	}
 }
+
 static void Keyboard_Init(void) {
 	DDRB = 0; /* set input */
 	DDRD &= 3; /* set input */ /* don't touch RX/TX */
@@ -105,28 +118,6 @@ static void Keyboard_Init(void) {
 		keystate[c] = 0xFF;
 }
 
-/** Main program entry point. This routine contains the overall program flow, including initial
- *  setup of all components and the main program loop.
- */
-int main(void) {
-	SetupHardware();
-	GlobalInterruptEnable();
-	for (;;) {
-		Keyboard_Scan();
-		MIDI_EventPacket_t ReceivedMIDIEvent;
-		while (MIDI_Device_ReceiveEventPacket(&Keyboard_MIDI_Interface, &ReceivedMIDIEvent))
-		{
-			if ((ReceivedMIDIEvent.Event == MIDI_EVENT(0, MIDI_COMMAND_NOTE_ON)) && (ReceivedMIDIEvent.Data3 > 0))
-			  ; /*LEDs_SetAllLEDs(ReceivedMIDIEvent.Data2 > 64 ? LEDS_LED1 : LEDS_LED2);*/
-			else
-			 ; /* LEDs_SetAllLEDs(LEDS_NO_LEDS);*/
-		}
-
-		MIDI_Device_USBTask(&Keyboard_MIDI_Interface);
-		USB_USBTask();
-	}
-	return 0;
-}
 
 /** Configures the board hardware and chip peripherals for the demo's functionality. */
 void SetupHardware(void) {
@@ -173,3 +164,25 @@ void EVENT_USB_Device_ControlRequest(void) {
 	MIDI_Device_ProcessControlRequest(&Keyboard_MIDI_Interface);
 }
 
+/** Main program entry point. This routine contains the overall program flow, including initial
+ *  setup of all components and the main program loop.
+ */
+int main(void) {
+	SetupHardware();
+	GlobalInterruptEnable();
+	for (;;) {
+		Keyboard_Scan();
+		MIDI_EventPacket_t ReceivedMIDIEvent;
+		while (MIDI_Device_ReceiveEventPacket(&Keyboard_MIDI_Interface, &ReceivedMIDIEvent))
+		{
+			if ((ReceivedMIDIEvent.Event == MIDI_EVENT(0, MIDI_COMMAND_NOTE_ON)) && (ReceivedMIDIEvent.Data3 > 0))
+			  ; /*LEDs_SetAllLEDs(ReceivedMIDIEvent.Data2 > 64 ? LEDS_LED1 : LEDS_LED2);*/
+			else
+			 ; /* LEDs_SetAllLEDs(LEDS_NO_LEDS);*/
+		}
+
+		MIDI_Device_USBTask(&Keyboard_MIDI_Interface);
+		USB_USBTask();
+	}
+	return 0;
+}
