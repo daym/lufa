@@ -82,12 +82,15 @@ static uint8_t Channel = MIDI_CHANNEL(1);
    PIND, PINB are the (half)tone selectors, 12 of them, pins 2,3,4,5,6,7,8,9,10,11,12,13. */
 static void Keyboard_Scan(void) {
 	for(uint8_t c = 0; c < COLS; ++c) {
+#if 0
 		if(columnPins[c] == _BV(0)) /* no idea why I'm not allowed to do that. USB device vanishes when I try. */
 			continue;
+#endif
 		uint16_t prevstate, newstate;
 		DDRC |= columnPins[c]; /* set octave output */
 		/* breaks; am not allowed to do that! */
 		PORTC &=~ columnPins[c]; /* pulse column */
+#if 0
 		prevstate = keystate[c];
 		newstate = ((uint16_t) PIND | ((uint16_t) PINB << 8)) >> 2;
 		if(prevstate != newstate) { /* send MIDI event */
@@ -100,7 +103,8 @@ static void Keyboard_Scan(void) {
 			}
 			keystate[c] = newstate;
 		}
-		/* TODO debounce? */
+#endif
+		/* TODO debounce */
 		PORTC |= columnPins[c]; /* end pulse */
 		DDRC &=~ columnPins[c]; /* end pulse */ /* breaks it */
 	}
