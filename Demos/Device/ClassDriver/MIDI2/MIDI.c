@@ -82,7 +82,7 @@ static uint8_t Channel = MIDI_CHANNEL(1);
    PIND, PINB are the (half)tone selectors, 12 of them, pins 2,3,4,5,6,7,8,9,10,11,12,13. */
 static void Keyboard_Scan(void) {
 	for(uint8_t c = 0; c < COLS; ++c) {
-		if(columnPins[c] == _BV(0)) /* no idea why I'm not allowed to do that. USB device vanishes when it try. */
+		if(columnPins[c] == _BV(0)) /* no idea why I'm not allowed to do that. USB device vanishes when I try. */
 			continue;
 		uint16_t prevstate, newstate;
 		DDRC |= columnPins[c]; /* set octave output */
