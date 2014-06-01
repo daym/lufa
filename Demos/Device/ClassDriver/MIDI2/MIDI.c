@@ -87,7 +87,7 @@ static void Keyboard_Scan(void) {
 		uint16_t prevstate, newstate;
 		DDRC |= columnPins[c]; /* set octave output */
 		/* breaks; am not allowed to do that! */
-		PORTC &=~ columnPins[c]; /* pulse column */ /* FIXME */
+		PORTC &=~ columnPins[c]; /* pulse column */
 		prevstate = keystate[c];
 		newstate = ((uint16_t) PIND | ((uint16_t) PINB << 8)) >> 2;
 		if(prevstate != newstate) { /* send MIDI event */
