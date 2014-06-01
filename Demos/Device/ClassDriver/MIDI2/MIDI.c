@@ -93,7 +93,7 @@ static void Keyboard_Scan(void) {
 		if(prevstate != newstate) { /* send MIDI event */
 			uint8_t note;
 			uint16_t changes = newstate ^ prevstate;
-			for(note = 1; note < 12; ++note) { /* FIXME */
+			for(note = 1; note < 12; ++note) { /* FIXME note 0 seems to change continously */
 				if((changes & (1 << note)) != 0) {
 					sendMIDIPacket(Channel, (newstate & _BV(note)) == 0 ? MIDI_COMMAND_NOTE_ON : MIDI_COMMAND_NOTE_OFF, 36 + c * 12 + note);
 				}
